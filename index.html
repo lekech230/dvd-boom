@@ -2,27 +2,118 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<!-- Отключаем возможность выделения и зума -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
 <title>FOX Boom Bam</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}
-body{background:#222;overflow:hidden;touch-action:manipulation;}
-.game{position:relative;background:black;width:100vw;height:100vh;overflow:hidden;}
-.fox-logo{position:absolute;background:#111;border-radius:50px;padding:12px 20px;border:3px solid #ff6600;color:#ff6600;font-weight:bold;font-size:1.8rem;text-align:center;white-space:nowrap;pointer-events:none;font-family:'Arial Black',sans-serif;box-shadow:0 0 10px #ff6600;}
-.flash{position:fixed;top:0;left:0;width:100%;height:100%;background:white;pointer-events:none;z-index:25;opacity:0;transition:opacity 0.08s;}
-.hit-text{position:absolute;font-size:2.5rem;font-weight:bold;color:yellow;text-shadow:4px 4px 0 red;pointer-events:none;z-index:30;white-space:nowrap;animation:fly 0.6s ease-out forwards;font-family:'Arial Black',sans-serif;}
-@keyframes fly{0%{opacity:1;transform:scale(0.3) translateY(0);}100%{opacity:0;transform:scale(2) translateY(-100px);}}
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+    }
+    
+    body {
+        background: #222;
+        overflow: hidden;
+        touch-action: manipulation;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
+    
+    .game {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: black;
+        overflow: hidden;
+    }
+    
+    .fox-logo {
+        position: absolute;
+        background: #111;
+        border-radius: 50px;
+        padding: 12px 20px;
+        border: 3px solid #ff6600;
+        color: #ff6600;
+        font-weight: bold;
+        font-size: 1.8rem;
+        text-align: center;
+        white-space: nowrap;
+        pointer-events: none;
+        font-family: 'Arial Black', sans-serif;
+        box-shadow: 0 0 10px #ff6600;
+    }
+    
+    .flash {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: white;
+        pointer-events: none;
+        z-index: 25;
+        opacity: 0;
+        transition: opacity 0.08s;
+    }
+    
+    .hit-text {
+        position: absolute;
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: yellow;
+        text-shadow: 4px 4px 0 red;
+        pointer-events: none;
+        z-index: 30;
+        white-space: nowrap;
+        animation: fly 0.6s ease-out forwards;
+        font-family: 'Arial Black', sans-serif;
+    }
+    
+    @keyframes fly {
+        0% { opacity: 1; transform: scale(0.3) translateY(0); }
+        100% { opacity: 0; transform: scale(2) translateY(-100px); }
+    }
+    
+    /* Подсказка для пользователя */
+    .fullscreen-hint {
+        position: fixed;
+        bottom: 20px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        color: rgba(255,255,255,0.5);
+        font-size: 12px;
+        font-family: monospace;
+        z-index: 50;
+        pointer-events: none;
+        background: rgba(0,0,0,0.5);
+        padding: 5px;
+        margin: 0 20px;
+        border-radius: 20px;
+    }
 </style>
 </head>
 <body>
 <div class="game" id="game">
-<div class="flash" id="flash"></div>
+    <div class="flash" id="flash"></div>
+    <div class="fullscreen-hint" id="hint">🔲 Нажмите для полноэкранного режима</div>
 </div>
 
 <script>
 (function(){
 const game = document.getElementById('game');
 const flashDiv = document.getElementById('flash');
+const hint = document.getElementById('hint');
 let fox = null;
 let anim = null;
 let x = 200, y = 200;
@@ -35,6 +126,39 @@ const phrases = ['💥 BOOM!', '💢 BAM!', '⚡ POW!', '🔨 WHACK!', '🤯 BOO
 const colors = ['#ff6600', '#00ffcc', '#ffcc00', '#33ff33', '#ff0066', '#cc33ff', '#ff00ff'];
 let colorIdx = 0;
 
+// === ПОЛНОЭКРАННЫЙ РЕЖИМ ===
+function requestFullscreen() {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+        elem.requestFullscreen();
+    } else if (elem.webkitRequestFullscreen) { /* Safari */
+        elem.webkitRequestFullscreen();
+    } else if (elem.msRequestFullscreen) { /* IE/Edge */
+        elem.msRequestFullscreen();
+    }
+}
+
+// Скрываем подсказку через 3 секунды
+setTimeout(() => {
+    if(hint) hint.style.opacity = '0';
+    setTimeout(() => {
+        if(hint) hint.style.display = 'none';
+    }, 1000);
+}, 3000);
+
+// Нажатие на экран для полноэкранного режима
+document.addEventListener('click', function enterFullscreen() {
+    requestFullscreen();
+    document.removeEventListener('click', enterFullscreen);
+});
+
+// Также обрабатываем тач для мобильных
+document.addEventListener('touchstart', function enterFullscreenTouch() {
+    requestFullscreen();
+    document.removeEventListener('touchstart', enterFullscreenTouch);
+}, { once: true });
+
+// === ОСНОВНАЯ ЛОГИКА ===
 function changeColor(){
     if(!fox) return;
     colorIdx = (colorIdx + 1) % colors.length;
@@ -85,7 +209,6 @@ function handleCollision(){
     let hit = false;
     let hitX = 0, hitY = 0;
     
-    // Лево-право
     if(x <= 0){
         x = 0;
         vx = -vx;
@@ -100,7 +223,6 @@ function handleCollision(){
         hitY = y + foxH/2;
     }
     
-    // Верх-низ
     if(y <= 0){
         y = 0;
         vy = -vy;
@@ -144,13 +266,11 @@ function updatePosition(){
 function init(){
     updateSize();
     
-    // Стартовая позиция — центр экрана
     x = (w / 2) - (foxW / 2);
     y = (h / 2) - (foxH / 2);
     if(x < 0) x = 20;
     if(y < 0) y = 20;
     
-    // Случайная скорость
     vx = (Math.random() * 5) + 2.5;
     vy = (Math.random() * 5) + 2;
     if(Math.random() > 0.5) vx = -vx;
@@ -158,7 +278,6 @@ function init(){
     
     fox = createFox();
     
-    // Уточняем размеры после отрисовки
     setTimeout(() => {
         if(fox){
             const rect = fox.getBoundingClientRect();
@@ -191,7 +310,6 @@ function handleResize(){
 window.addEventListener('resize', () => { setTimeout(handleResize, 100); });
 document.body.style.overflow = 'hidden';
 
-// ЗАПУСКАЕМ СРАЗУ БЕЗ КНОПКИ!
 init();
 
 })();
